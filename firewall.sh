@@ -119,6 +119,9 @@ Unload_DebugIPTables () {
 		iptables -D logdrop -p tcp --tcp-flags ALL RST -j LOG --log-prefix "[PROTECT - RST] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 		iptables -D logdrop -p tcp --tcp-flags ALL FIN,ACK -j LOG --log-prefix "[PROTECT - FIN,ACK] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 		iptables -D logdrop -p tcp --tcp-flags ALL ACK,PSH,FIN -j LOG --log-prefix "[PROTECT - ACK,PSH,FIN] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+		iptables -D logdrop -p icmp --icmp-type 3 -j LOG --log-prefix "[PROTECT - ICMP_T3] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+		iptables -D logdrop -p icmp --icmp-type 11 -j LOG --log-prefix "[PROTECT - ICMP_T11] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+
 }
 
 Unload_IPTables () {
@@ -134,6 +137,8 @@ Unload_IPTables () {
 		iptables -D logdrop -p tcp --tcp-flags ALL RST -j ACCEPT >/dev/null 2>&1
 		iptables -D logdrop -p tcp --tcp-flags ALL FIN,ACK -j ACCEPT >/dev/null 2>&1
 		iptables -D logdrop -p tcp --tcp-flags ALL ACK,PSH,FIN -j ACCEPT >/dev/null 2>&1
+		iptables -D logdrop -p icmp --icmp-type 3 -j ACCEPT >/dev/null 2>&1
+		iptables -D logdrop -p icmp --icmp-type 11 -j ACCEPT >/dev/null 2>&1
 		iptables -D logdrop -i "$iface" -p tcp -m multiport --sports 80,443,143,993,110,995,25,465 -m state --state INVALID -j DROP >/dev/null 2>&1
 		iptables -D logdrop -m set --match-set ServicePort dst,dst -j ACCEPT >/dev/null 2>&1
 		iptables -D logdrop -i "$iface" -m set --match-set Whitelist src -j ACCEPT >/dev/null 2>&1
@@ -154,6 +159,8 @@ Load_IPTables () {
 			iptables -I logdrop -p tcp --tcp-flags ALL RST -j ACCEPT >/dev/null 2>&1
 			iptables -I logdrop -p tcp --tcp-flags ALL FIN,ACK -j ACCEPT >/dev/null 2>&1
 			iptables -I logdrop -p tcp --tcp-flags ALL ACK,PSH,FIN -j ACCEPT >/dev/null 2>&1
+			iptables -I logdrop -p icmp --icmp-type 3 -j ACCEPT >/dev/null 2>&1
+			iptables -I logdrop -p icmp --icmp-type 11 -j ACCEPT >/dev/null 2>&1
 			iptables -I logdrop -i "$iface" -p tcp -m multiport --sports 80,443,143,993,110,995,25,465 -m state --state INVALID -j DROP >/dev/null 2>&1
 			iptables -I logdrop -m set --match-set ServicePort dst,dst -j ACCEPT >/dev/null 2>&1
 			iptables -I logdrop -i "$iface" -m set --match-set Whitelist src -j ACCEPT >/dev/null 2>&1
@@ -239,6 +246,10 @@ Enable_Debug () {
 			iptables -I logdrop "$pos" -p tcp --tcp-flags ALL FIN,ACK -j LOG --log-prefix "[PROTECT - FIN,ACK] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 			pos="$(iptables --line -L logdrop -nt filter | grep -F "0x3F/0x19" | grep -F "ACCEPT" | awk '{print $1}')"
 			iptables -I logdrop "$pos" -p tcp --tcp-flags ALL ACK,PSH,FIN -j LOG --log-prefix "[PROTECT - ACK,PSH,FIN] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+			pos="$(iptables --line -L logdrop -nt filter | grep -F "icmptype 3" | grep -F "ACCEPT" | awk '{print $1}')"
+			iptables -I logdrop "$pos" -p icmp --icmp-type 3 -j LOG --log-prefix "[PROTECT - ICMP_T3] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+			pos="$(iptables --line -L logdrop -nt filter | grep -F "icmptype 11" | grep -F "ACCEPT" | awk '{print $1}')"
+			iptables -I logdrop "$pos" -p icmp --icmp-type 11 -j LOG --log-prefix "[PROTECT - ICMP_T11] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 		fi
 }
 
