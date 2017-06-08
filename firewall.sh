@@ -630,16 +630,16 @@ case "$1" in
 		ipset -R < "$location/scripts/ipset.txt"
 		Unban_PrivateIP
 		Purge_Logs
-		ipset -q -N Whitelist nethash
-		ipset -q -N Blacklist iphash --maxelem 500000
-		ipset -q -N BlockedRanges nethash
+		ipset -q -N -exist Whitelist nethash
+		ipset -q -N -exist Blacklist iphash --maxelem 500000
+		ipset -q -N -exist BlockedRanges nethash
 		ipset -q -N -exist ServicePort hash:ip,port
-		ipset -q -A Whitelist 192.168.1.0/24
-		ipset -q -A Whitelist "$(nvram get wan0_ipaddr)"/32
-		ipset -q -A Whitelist "$(nvram get lan_ipaddr)"/24
-		ipset -q -A Whitelist "$(nvram get wan_dns1_x)"/32
-		ipset -q -A Whitelist "$(nvram get wan_dns2_x)"/32
-		ipset -q -A Whitelist 151.101.96.133/32   # raw.githubusercontent.com Update Server
+		ipset -q -A -exist Whitelist 192.168.1.0/24
+		ipset -q -A -exist Whitelist "$(nvram get wan0_ipaddr)"/32
+		ipset -q -A -exist Whitelist "$(nvram get lan_ipaddr)"/24
+		ipset -q -A -exist Whitelist "$(nvram get wan_dns1_x)"/32
+		ipset -q -A -exist Whitelist "$(nvram get wan_dns2_x)"/32
+		ipset -q -A -exist Whitelist 151.101.96.133/32   # raw.githubusercontent.com Update Server
 		Unload_IPTables
 		Unload_DebugIPTables
 		Load_IPTables "$2"
