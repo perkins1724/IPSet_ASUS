@@ -215,7 +215,7 @@ Enable_Debug () {
 			echo "Enabling Raw Debug Output"
 			pos1="$(iptables --line -L PREROUTING -nt raw | grep -F "BlockedRanges" | grep -F "DROP" | awk '{print $1}')"
 			iptables -t raw -I PREROUTING "$pos1" -i "$iface" -m set --match-set BlockedRanges src -j LOG --log-prefix "[BLOCKED - RAW] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
-			pos2="$(iptables --line -L PREROUTING -nt raw | grep -F Blacklist | grep -F "DROP" | awk '{print $1}')"
+			pos2="$(iptables --line -L PREROUTING -nt raw | grep -F "Blacklist src" | grep -F "DROP" | awk '{print $1}')"
 			iptables -t raw -I PREROUTING "$pos2" -i "$iface" -m set --match-set Blacklist src -j LOG --log-prefix "[BLOCKED - RAW] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 			pos="$(iptables --line -L logdrop -nt filter | grep -F "ServicePort" | grep -F "ACCEPT" | awk '{print $1}')"
 			iptables -I logdrop "$pos" -m set --match-set ServicePort dst,dst -j LOG --log-prefix "[PROTECT - ServicePort] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
