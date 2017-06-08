@@ -21,6 +21,7 @@
 #	  "save"	     # <-- Save Blacklists To ipset.txt
 #	  "ban"		     # <-- Adds Entry To Blacklist (IP/Range/Domain/Port/Country)
 #	  "banmalware"	     # <-- Bans Various Malware Domains
+#	  "serviceport"      # <-- Add / Remove Port That This Router Is Hosting Service On ([PROTOCOL]:PORT)
 #	  "whitelist"        # <-- Add Entry To Whitelist (IP/Range/Domain/Port/Remove)
 #	  "import"	     # <-- Bans All IPs From URL
 #	  "deport"	     # <-- Unbans All IPs From URL
@@ -113,6 +114,7 @@ Check_Settings () {
 Unload_DebugIPTables () {
 		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set BlockedRanges src -j LOG --log-prefix "[BLOCKED - RAW] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set Blacklist src -j LOG --log-prefix "[BLOCKED - RAW] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+		iptables -I logdrop -m set --match-set ServicePort dst,dst -j LOG --log-prefix "[PROTECT - ServicePort] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 }
 
 Unload_IPTables () {
@@ -123,6 +125,7 @@ Unload_IPTables () {
 		iptables -D logdrop -i "$iface" -m state --state INVALID -j SET --add-set Blacklist src >/dev/null 2>&1
 		iptables -D logdrop -i "$iface" -m state --state INVALID -j LOG --log-prefix "[BLOCKED - NEW BAN] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 		iptables -D logdrop -i "$iface" -p tcp -m multiport --sports 80,443,143,993,110,995,25,465 -m state --state INVALID -j DROP >/dev/null 2>&1
+		iptables -D logdrop -m set --match-set ServicePort dst,dst -j ACCEPT >/dev/null 2>&1
 		iptables -D logdrop -i "$iface" -m set --match-set Whitelist src -j ACCEPT >/dev/null 2>&1
 }
 
@@ -136,6 +139,7 @@ Load_IPTables () {
 			iptables -I logdrop -i "$iface" -m state --state INVALID -j SET --add-set Blacklist src >/dev/null 2>&1
 			iptables -I logdrop -i "$iface" -m state --state INVALID -j LOG --log-prefix "[BLOCKED - NEW BAN] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 			iptables -I logdrop -i "$iface" -p tcp -m multiport --sports 80,443,143,993,110,995,25,465 -m state --state INVALID -j DROP >/dev/null 2>&1
+			iptables -I logdrop -m set --match-set ServicePort dst,dst -j ACCEPT >/dev/null 2>&1
 			iptables -I logdrop -i "$iface" -m set --match-set Whitelist src -j ACCEPT >/dev/null 2>&1
 		fi
 }
@@ -209,6 +213,8 @@ Enable_Debug () {
 			iptables -t raw -I PREROUTING "$pos1" -i "$iface" -m set --match-set BlockedRanges src -j LOG --log-prefix "[BLOCKED - RAW] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 			pos2="$(iptables --line -L PREROUTING -nt raw | grep -F Blacklist | grep -F "DROP" | awk '{print $1}')"
 			iptables -t raw -I PREROUTING "$pos2" -i "$iface" -m set --match-set Blacklist src -j LOG --log-prefix "[BLOCKED - RAW] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+			pos="$(iptables --line -L logdrop -nt filter | grep -F "ServicePort" | grep -F "ACCEPT" | awk '{print $1}')"
+			iptables -I logdrop -m set --match-set ServicePort dst,dst -j LOG --log-prefix "[PROTECT - ServicePort] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 		fi
 }
 
@@ -412,6 +418,30 @@ case "$1" in
 		rm -rf /tmp/skynet.lock
 		;;
 
+	serviceport)
+		Purge_Logs
+		if [ -z "$2" ]; then
+			echo "To add a Service Port and prevent black/grey listing on that port Use; \"sh $0 serviceport add PORT\""
+			echo "To remove a Service Port and enable possible black/grey listing on that port Use; \"sh $0 serviceport del PORT\""
+			echo "If protocol is not specified then defaults to TCP. Examples: udp:1194 tcp:80 tcp:443"
+			echo "Input PORT To add to ServicePort"
+			read -r serviceport
+			logger -st Skynet "[Adding $serviceport To ServicePort] ... ... ..."
+			ipset -A ServicePort "$serviceport"
+			sed -i "\~$serviceport~d" /jffs/skynet.log
+		elif [ "$2" = "add" ] && [ -n "$3" ]; then
+			logger -st Skynet "[Adding $3 To ServicePort] ... ... ..."
+			ipset -A ServicePort "$(nvram get wan0_ipaddr)","$3"
+		elif [ "$2" = "del" ] && [ -n "$3" ]; then
+			logger -st Skynet "[Removing $3 From ServicePort] ... ... ..."
+			ipset -D ServicePort "$(nvram get wan0_ipaddr)","$3"
+		else
+			echo "Command Not Recognised, Please Try Again"
+		exit
+		fi
+		ipset --save > /jffs/scripts/ipset.txt
+		;;
+
 	whitelist)
 		Purge_Logs
 		if [ -z "$2" ]; then
@@ -603,6 +633,7 @@ case "$1" in
 		ipset -q -N Whitelist nethash
 		ipset -q -N Blacklist iphash --maxelem 500000
 		ipset -q -N BlockedRanges nethash
+		ipset -q -N -exist ServicePort hash:ip,port
 		ipset -q -A Whitelist 192.168.1.0/24
 		ipset -q -A Whitelist "$(nvram get wan0_ipaddr)"/32
 		ipset -q -A Whitelist "$(nvram get lan_ipaddr)"/24
