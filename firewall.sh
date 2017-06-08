@@ -115,6 +115,10 @@ Unload_DebugIPTables () {
 		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set BlockedRanges src -j LOG --log-prefix "[BLOCKED - RAW] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set Blacklist src -j LOG --log-prefix "[BLOCKED - RAW] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 		iptables -D logdrop -m set --match-set ServicePort dst,dst -j LOG --log-prefix "[PROTECT - ServicePort] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+		iptables -D logdrop -p tcp --tcp-flags ALL RST,ACK -j LOG --log-prefix "[PROTECT - RST_ACK] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+		iptables -D logdrop -p tcp --tcp-flags ALL RST -j LOG --log-prefix "[PROTECT - RST] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+		iptables -D logdrop -p tcp --tcp-flags ALL FIN,ACK -j LOG --log-prefix "[PROTECT - FIN,ACK] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+		iptables -D logdrop -p tcp --tcp-flags ALL ACK,PSH,FIN -j LOG --log-prefix "[PROTECT - ACK,PSH,FIN] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 }
 
 Unload_IPTables () {
@@ -227,6 +231,14 @@ Enable_Debug () {
 			iptables -t raw -I PREROUTING "$pos2" -i "$iface" -m set --match-set Blacklist src -j LOG --log-prefix "[BLOCKED - RAW] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 			pos="$(iptables --line -L logdrop -nt filter | grep -F "ServicePort" | grep -F "ACCEPT" | awk '{print $1}')"
 			iptables -I logdrop "$pos" -m set --match-set ServicePort dst,dst -j LOG --log-prefix "[PROTECT - ServicePort] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+			pos="$(iptables --line -L logdrop -nt filter | grep -F "0x3F/0x14" | grep -F "ACCEPT" | awk '{print $1}')"
+			iptables -I logdrop "$pos" -p tcp --tcp-flags ALL RST,ACK -j LOG --log-prefix "[PROTECT - RST_ACK] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+			pos="$(iptables --line -L logdrop -nt filter | grep -F "0x3F/0x04" | grep -F "ACCEPT" | awk '{print $1}')"
+			iptables -I logdrop "$pos" -p tcp --tcp-flags ALL RST -j LOG --log-prefix "[PROTECT - RST] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+			pos="$(iptables --line -L logdrop -nt filter | grep -F "0x3F/0x11" | grep -F "ACCEPT" | awk '{print $1}')"
+			iptables -I logdrop "$pos" -p tcp --tcp-flags ALL FIN,ACK -j LOG --log-prefix "[PROTECT - FIN,ACK] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+			pos="$(iptables --line -L logdrop -nt filter | grep -F "0x3F/0x19" | grep -F "ACCEPT" | awk '{print $1}')"
+			iptables -I logdrop "$pos" -p tcp --tcp-flags ALL ACK,PSH,FIN -j LOG --log-prefix "[PROTECT - ACK,PSH,FIN] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 		fi
 }
 
