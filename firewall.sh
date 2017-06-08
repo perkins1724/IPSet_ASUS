@@ -651,6 +651,10 @@ case "$1" in
 		sed -i '/Startup Initiated/d' /tmp/syslog.log
 		logger -st Skynet "[INFO] Startup Initiated ... ... ..."
 		modprobe xt_set >/dev/null 2>&1
+		OLD_WAN_IP=`cat "$location/scripts/ipset.txt" | grep -m 1 "add ServicePort" | sed 's/,.*//' | sed 's/.* //'`
+		if [ "$OLD_WAN_IP" != "$(nvram get wan0_ipaddr)" ] && [ "$OLD_WAN_IP" != "" ]; then
+			sed -i "s/add ServicePort $OLD_WAN_IP/add ServicePort $(nvram get wan0_ipaddr)/g" "$location/scripts/ipset.txt"
+		fi
 		ipset -q -R -exist < "$location/scripts/ipset.txt"
 		Unban_PrivateIP
 		Purge_Logs
