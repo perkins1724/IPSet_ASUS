@@ -114,7 +114,7 @@ Check_Settings () {
 Unload_DebugIPTables () {
 		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set BlockedRanges src -j LOG --log-prefix "[BLOCKED - RAW] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set Blacklist src -j LOG --log-prefix "[BLOCKED - RAW] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
-		iptables -I logdrop -m set --match-set ServicePort dst,dst -j LOG --log-prefix "[PROTECT - ServicePort] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+		iptables -D logdrop -m set --match-set ServicePort dst,dst -j LOG --log-prefix "[PROTECT - ServicePort] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 }
 
 Unload_IPTables () {
@@ -214,7 +214,7 @@ Enable_Debug () {
 			pos2="$(iptables --line -L PREROUTING -nt raw | grep -F Blacklist | grep -F "DROP" | awk '{print $1}')"
 			iptables -t raw -I PREROUTING "$pos2" -i "$iface" -m set --match-set Blacklist src -j LOG --log-prefix "[BLOCKED - RAW] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 			pos="$(iptables --line -L logdrop -nt filter | grep -F "ServicePort" | grep -F "ACCEPT" | awk '{print $1}')"
-			iptables -I logdrop -m set --match-set ServicePort dst,dst -j LOG --log-prefix "[PROTECT - ServicePort] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
+			iptables -I logdrop "$pos" -m set --match-set ServicePort dst,dst -j LOG --log-prefix "[PROTECT - ServicePort] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 		fi
 }
 
