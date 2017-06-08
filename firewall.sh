@@ -651,7 +651,7 @@ case "$1" in
 		sed -i '/Startup Initiated/d' /tmp/syslog.log
 		logger -st Skynet "[INFO] Startup Initiated ... ... ..."
 		modprobe xt_set >/dev/null 2>&1
-		ipset -R < "$location/scripts/ipset.txt"
+		ipset -q -R -exist < "$location/scripts/ipset.txt"
 		Unban_PrivateIP
 		Purge_Logs
 		ipset -q -N -exist Whitelist nethash
