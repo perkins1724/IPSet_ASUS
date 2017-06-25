@@ -128,6 +128,7 @@ Unload_IPTables () {
 		iptables -D logdrop -m state --state NEW -j LOG --log-prefix "DROP " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set Blacklist src -j DROP >/dev/null 2>&1
 		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set BlockedRanges src -j DROP >/dev/null 2>&1
+		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set ServicePort dst,dst -j ACCEPT >/dev/null 2>&1
 		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set ServicePort src,src -j ACCEPT >/dev/null 2>&1
 		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set Whitelist src -j ACCEPT >/dev/null 2>&1
 		iptables -t nat -D PREROUTING -p tcp -m set --match-set Blacklist dst -j DNAT --to-destination "$(nvram get lan_ipaddr)":81 >/dev/null 2>&1
@@ -160,6 +161,7 @@ Load_IPTables () {
 		iptables -t nat -I PREROUTING -i "$iface" -m set --match-set ServicePort src,src -j ACCEPT >/dev/null 2>&1
 		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set Blacklist src -j DROP >/dev/null 2>&1
 		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set BlockedRanges src -j DROP >/dev/null 2>&1
+		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set ServicePort dst,dst -j ACCEPT >/dev/null 2>&1
 		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set ServicePort src,src -j ACCEPT >/dev/null 2>&1
 		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set Whitelist src -j ACCEPT >/dev/null 2>&1
 		if [ "$1" = "noautoban" ]; then
