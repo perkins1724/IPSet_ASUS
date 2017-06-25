@@ -128,6 +128,7 @@ Unload_IPTables () {
 		iptables -D logdrop -m state --state NEW -j LOG --log-prefix "DROP " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set Blacklist src -j DROP >/dev/null 2>&1
 		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set BlockedRanges src -j DROP >/dev/null 2>&1
+		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set ServicePort src,src -j ACCEPT >/dev/null 2>&1
 		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set Whitelist src -j ACCEPT >/dev/null 2>&1
 		iptables -t nat -D PREROUTING -p tcp -m set --match-set Blacklist dst -j DNAT --to-destination "$(nvram get lan_ipaddr)":81 >/dev/null 2>&1
 		iptables -t nat -D PREROUTING -p udp -m set --match-set Blacklist dst -j DNAT --to-destination "$(nvram get lan_ipaddr)":81 >/dev/null 2>&1
@@ -135,6 +136,7 @@ Unload_IPTables () {
 		iptables -t nat -D PREROUTING -p tcp -m set --match-set BlockedRanges dst -j DNAT --to-destination "$(nvram get lan_ipaddr)":81 >/dev/null 2>&1
 		iptables -t nat -D PREROUTING -p udp -m set --match-set BlockedRanges dst -j DNAT --to-destination "$(nvram get lan_ipaddr)":81 >/dev/null 2>&1
 		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set BlockedRanges dst -j DROP >/dev/null 2>&1
+		iptables -t nat	-D PREROUTING -i "$iface" -m set --match-set ServicePort src,src -j ACCEPT >/dev/null 2>&1
 		iptables -D logdrop -i "$iface" -m state --state INVALID -j SET --add-set Blacklist src >/dev/null 2>&1
 		iptables -D logdrop -i "$iface" -m state --state INVALID -j LOG --log-prefix "[BLOCKED - NEW BAN] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 		iptables -D logdrop -p tcp --tcp-flags ALL RST,ACK -j ACCEPT >/dev/null 2>&1
@@ -149,15 +151,17 @@ Unload_IPTables () {
 }
 
 Load_IPTables () {
-		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set Blacklist src -j DROP >/dev/null 2>&1
-		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set BlockedRanges src -j DROP >/dev/null 2>&1
-		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set Whitelist src -j ACCEPT >/dev/null 2>&1
 		iptables -t nat -I PREROUTING -p tcp -m set --match-set Blacklist dst -j DNAT --to-destination "$(nvram get lan_ipaddr)":81 >/dev/null 2>&1
 		iptables -t nat -I PREROUTING -p udp -m set --match-set Blacklist dst -j DNAT --to-destination "$(nvram get lan_ipaddr)":81 >/dev/null 2>&1
 		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set Blacklist dst -j DROP >/dev/null 2>&1
 		iptables -t nat -I PREROUTING -p tcp -m set --match-set BlockedRanges dst -j DNAT --to-destination "$(nvram get lan_ipaddr)":81 >/dev/null 2>&1
 		iptables -t nat -I PREROUTING -p udp -m set --match-set BlockedRanges dst -j DNAT --to-destination "$(nvram get lan_ipaddr)":81 >/dev/null 2>&1
 		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set BlockedRanges dst -j DROP >/dev/null 2>&1
+		iptables -t nat -I PREROUTING -i "$iface" -m set --match-set ServicePort src,src -j ACCEPT >/dev/null 2>&1
+		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set Blacklist src -j DROP >/dev/null 2>&1
+		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set BlockedRanges src -j DROP >/dev/null 2>&1
+		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set ServicePort src,src -j ACCEPT >/dev/null 2>&1
+		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set Whitelist src -j ACCEPT >/dev/null 2>&1
 		if [ "$1" = "noautoban" ]; then
 			logger -st Skynet "[INFO] Enabling No-Autoban Mode ... ... ..."
 		else
@@ -240,7 +244,7 @@ Purge_Logs () {
 Enable_Debug () {
 		if [ "$1" = "debug" ] || [ "$2" = "debug" ]; then
 			echo "Enabling Raw Debug Output"
-			pos1="$(iptables --line -L PREROUTING -nt raw | grep -F "BlockedRanges" | grep -F "DROP" | awk '{print $1}')"
+			pos1="$(iptables --line -L PREROUTING -nt raw | grep -F "BlockedRanges src" | grep -F "DROP" | awk '{print $1}')"
 			iptables -t raw -I PREROUTING "$pos1" -i "$iface" -m set --match-set BlockedRanges src -j LOG --log-prefix "[BLOCKED - RAW] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 			pos2="$(iptables --line -L PREROUTING -nt raw | grep -F "Blacklist src" | grep -F "DROP" | awk '{print $1}')"
 			iptables -t raw -I PREROUTING "$pos2" -i "$iface" -m set --match-set Blacklist src -j LOG --log-prefix "[BLOCKED - RAW] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
