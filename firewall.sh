@@ -137,7 +137,8 @@ Unload_IPTables () {
 		iptables -t nat -D PREROUTING -p tcp -m set --match-set BlockedRanges dst -j DNAT --to-destination "$(nvram get lan_ipaddr)":81 >/dev/null 2>&1
 		iptables -t nat -D PREROUTING -p udp -m set --match-set BlockedRanges dst -j DNAT --to-destination "$(nvram get lan_ipaddr)":81 >/dev/null 2>&1
 		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set BlockedRanges dst -j DROP >/dev/null 2>&1
-		iptables -t nat	-D PREROUTING -i "$iface" -m set --match-set ServicePort src,src -j ACCEPT >/dev/null 2>&1
+		iptables -t nat -D PREROUTING -i "$iface" -m set --match-set ServicePort src,src -j ACCEPT >/dev/null 2>&1
+		iptables -t nat	-D PREROUTING -i "$iface" -m set --match-set ServicePort src,src -j VSERVER >/dev/null 2>&1
 		iptables -D logdrop -i "$iface" -m state --state INVALID -j SET --add-set Blacklist src >/dev/null 2>&1
 		iptables -D logdrop -i "$iface" -m state --state INVALID -j LOG --log-prefix "[BLOCKED - NEW BAN] " --log-tcp-sequence --log-tcp-options --log-ip-options >/dev/null 2>&1
 		iptables -D logdrop -p tcp --tcp-flags ALL RST,ACK -j ACCEPT >/dev/null 2>&1
@@ -149,6 +150,11 @@ Unload_IPTables () {
 		iptables -D logdrop -i "$iface" -p tcp -m multiport --sports 80,443,143,993,110,995,25,465 -m state --state INVALID -j DROP >/dev/null 2>&1
 		iptables -D logdrop -m set --match-set ServicePort dst,dst -j ACCEPT >/dev/null 2>&1
 		iptables -D logdrop -i "$iface" -m set --match-set Whitelist src -j ACCEPT >/dev/null 2>&1
+		iptables -t nat -D PREROUTING -p tcp -m set --match-set Whitelist dst -j ACCEPT >/dev/null 2>&1
+		iptables -t nat -D PREROUTING -p tcp -m set --match-set Whitelist dst -j VSERVER >/dev/null 2>&1
+		iptables -t nat -D PREROUTING -p udp -m set --match-set Whitelist dst -j ACCEPT >/dev/null 2>&1
+		iptables -t nat -D PREROUTING -p udp -m set --match-set Whitelist dst -j VSERVER >/dev/null 2>&1
+		iptables -t raw -D PREROUTING -i "$iface" -m set --match-set Whitelist dst -j ACCEPT >/dev/null 2>&1
 }
 
 Load_IPTables () {
@@ -159,11 +165,17 @@ Load_IPTables () {
 		iptables -t nat -I PREROUTING -p udp -m set --match-set BlockedRanges dst -j DNAT --to-destination "$(nvram get lan_ipaddr)":81 >/dev/null 2>&1
 		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set BlockedRanges dst -j DROP >/dev/null 2>&1
 		iptables -t nat -I PREROUTING -i "$iface" -m set --match-set ServicePort src,src -j ACCEPT >/dev/null 2>&1
+		iptables -t nat -I PREROUTING -i "$iface" -m set --match-set ServicePort src,src -j VSERVER >/dev/null 2>&1
 		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set Blacklist src -j DROP >/dev/null 2>&1
 		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set BlockedRanges src -j DROP >/dev/null 2>&1
 		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set ServicePort dst,dst -j ACCEPT >/dev/null 2>&1
 		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set ServicePort src,src -j ACCEPT >/dev/null 2>&1
 		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set Whitelist src -j ACCEPT >/dev/null 2>&1
+		iptables -t nat -I PREROUTING -p tcp -m set --match-set Whitelist dst -j ACCEPT >/dev/null 2>&1
+		iptables -t nat -I PREROUTING -p tcp -m set --match-set Whitelist dst -j VSERVER >/dev/null 2>&1
+		iptables -t nat -I PREROUTING -p udp -m set --match-set Whitelist dst -j ACCEPT >/dev/null 2>&1
+		iptables -t nat -I PREROUTING -p udp -m set --match-set Whitelist dst -j VSERVER >/dev/null 2>&1
+		iptables -t raw -I PREROUTING -i "$iface" -m set --match-set Whitelist dst -j ACCEPT >/dev/null 2>&1
 		if [ "$1" = "noautoban" ]; then
 			logger -st Skynet "[INFO] Enabling No-Autoban Mode ... ... ..."
 		else
